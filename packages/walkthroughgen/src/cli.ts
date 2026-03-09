@@ -210,7 +210,8 @@ function generateRichSectionMarkdown(
   section: Section,
   projectRoot: string,
   sectionWorkingDir: string,
-  walkthroughTargets: WalkthroughData['targets']
+  walkthroughTargets: WalkthroughData['targets'],
+  fileCache: Map<string, string>
 ): string {
   let markdown = `# ${section.title}\n\n`;
   if (section.text) {
@@ -256,7 +257,12 @@ function generateRichSectionMarkdown(
 
         let newContent: string;
         try {
-          newContent = fs.readFileSync(srcAbsolutePath, 'utf8');
+          if (fileCache.has(srcAbsolutePath)) {
+            newContent = fileCache.get(srcAbsolutePath)!;
+          } else {
+            newContent = fs.readFileSync(srcAbsolutePath, 'utf8');
+            fileCache.set(srcAbsolutePath, newContent);
+          }
         } catch (error: any) {
           console.warn(`Warning: Could not read source file ${srcAbsolutePath} for step: ${step.text || 'Unnamed step'}`);
           continue;
@@ -389,6 +395,7 @@ OPTIONS:
     // Track virtual file state for diff generation
     const projectRoot = path.dirname(yamlPath);
     const virtualFileState = new Map<string, string>();
+    const fileCache = new Map<string, string>();
     
     // Process folders target first
     if (data.targets) {
@@ -434,7 +441,7 @@ OPTIONS:
                   }
 
                   // Generate and write section README
-                  const sectionMarkdown = generateRichSectionMarkdown(section, projectRoot, sectionPath, data.targets);
+                  const sectionMarkdown = generateRichSectionMarkdown(section, projectRoot, sectionPath, data.targets, fileCache);
                   fs.writeFileSync(path.join(sectionPath, 'README.md'), sectionMarkdown);
                   
                   sectionPathForApplySteps = sectionPath;
@@ -488,7 +495,12 @@ OPTIONS:
 
               let newContent: string;
               try {
-                newContent = fs.readFileSync(srcAbsolutePath, 'utf8');
+                if (fileCache.has(srcAbsolutePath)) {
+                  newContent = fileCache.get(srcAbsolutePath)!;
+                } else {
+                  newContent = fs.readFileSync(srcAbsolutePath, 'utf8');
+                  fileCache.set(srcAbsolutePath, newContent);
+                }
               } catch (error: any) {
                 console.warn(`Warning: Could not read source file ${srcAbsolutePath} for step: ${step.text || 'Unnamed step'}`);
                 continue;
